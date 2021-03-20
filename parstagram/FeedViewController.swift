@@ -14,29 +14,26 @@ class FeedViewController: UIViewController, UITableViewDelegate, UITableViewData
     @IBOutlet weak var tableView: UITableView!
     
     var posts = [PFObject]()
+    var numberOfPosts: Int!
+    
+    let myRefreshControl = UIRefreshControl()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         tableView.delegate = self
         tableView.dataSource = self
-
+        
+        loadPosts()
         // Do any additional setup after loading the view.
+        myRefreshControl.addTarget(self, action: #selector(loadPosts), for: .valueChanged)
+        tableView.refreshControl = myRefreshControl
+        tableView.insertSubview(myRefreshControl, at: 0)
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        
-        let query = PFQuery(className:"Posts")
-        query.includeKey("author")
-        query.limit = 20
-        
-        query.findObjectsInBackground { (posts, error) in
-            if posts != nil {
-                self.posts = posts!
-                self.tableView.reloadData()
-            }
-        }
+        loadPosts()
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -60,10 +57,49 @@ class FeedViewController: UIViewController, UITableViewDelegate, UITableViewData
         
         cell.photoView.af_setImage(withURL: url)
         
+        if indexPath.row + 1 == posts.count{
+            loadMorePosts()
+        }
+        
         return cell
     }
     
-
+    @objc func loadPosts() {
+        numberOfPosts = 20
+        let query = PFQuery(className:"Posts")
+        query.order(byDescending: "createdAt")
+        query.includeKey("author")
+        query.limit = numberOfPosts
+        
+        query.findObjectsInBackground { (posts, error) in
+            if posts != nil {
+                self.posts = posts!
+                self.tableView.reloadData()
+            }
+        }
+        
+        self.tableView.reloadData()
+        self.myRefreshControl.endRefreshing()
+    }
+    
+    func loadMorePosts() {
+        numberOfPosts = numberOfPosts + 20
+        let query = PFQuery(className:"Posts")
+        query.order(byDescending: "createdAt")
+        query.includeKey("author")
+        query.limit = numberOfPosts
+        
+        query.findObjectsInBackground { (posts, error) in
+            if posts != nil {
+                self.posts = posts!
+                self.tableView.reloadData()
+            }
+        }
+        
+        self.tableView.reloadData()
+    }
+    
+    
     /*
     // MARK: - Navigation
 
